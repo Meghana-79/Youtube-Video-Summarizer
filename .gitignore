@@ -32,3 +32,8 @@ env/
 *~
 .DS_Store
 summaries.db
+app.log
+**pycache**/
+*.pyc
+summaries.db
+.env
