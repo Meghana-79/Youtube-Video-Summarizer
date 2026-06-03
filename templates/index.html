@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Summarizer - AI-Powered Summaries</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="wrapper">
+        <!-- Header -->
+        <header class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo-section">
+                        <h1 class="logo">📹 YouTube Summarizer</h1>
+                        <p class="tagline">AI-powered video summarization in seconds</p>
+                    </div>
+                    <div class="header-actions">
+                        <button id="themeToggle" class="theme-toggle" title="Toggle dark mode">
+                            <span class="theme-icon">🌙</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="container">
+                <ul class="nav-list">
+                    <li class="nav-item"><a href="/" class="nav-link active">Home</a></li>
+                    <li class="nav-item"><a href="/history" class="nav-link">History</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Hero Section -->
+                <div class="hero">
+                    <h2>Summarize YouTube Videos Instantly</h2>
+                    <p>Get AI-powered summaries of any YouTube video using advanced NLP and transformer models</p>
+                </div>
+
+                <!-- Input Section -->
+                <div class="input-section card">
+                    <h3>Enter YouTube Video URL</h3>
+                    <form id="summarizeForm" class="form">
+                        <div class="form-group">
+                            <input 
+                                type="text" 
+                                id="videoUrl" 
+                                name="videoUrl" 
+                                class="form-input"
+                                placeholder="https://www.youtube.com/watch?v=..."
+                                required
+                            >
+                            <small class="form-hint">Paste any YouTube URL (supports youtube.com, youtu.be, and more)</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <span class="btn-text">📊 Summarize Video</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Analytics Preview -->
+                {% if analytics %}
+                <div class="analytics-preview card">
+                    <h3>📈 Quick Stats</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ analytics.total_summaries }}</div>
+                            <div class="stat-label">Videos Summarized</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ analytics.total_words_processed|int }}</div>
+                            <div class="stat-label">Words Processed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ analytics.average_compression_ratio }}%</div>
+                            <div class="stat-label">Avg Compression</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ analytics.average_summary_length|int }}</div>
+                            <div class="stat-label">Avg Summary Words</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Loading Spinner -->
+                <div id="loadingSpinner" class="spinner-container hidden">
+                    <div class="spinner"></div>
+                    <p>Extracting transcript and generating summary...</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="errorMessage" class="alert alert-error hidden"></div>
+
+                <!-- Result Container -->
+                <div id="resultContainer" class="result-container hidden">
+                    <div class="result-header">
+                        <h3>✅ Summary Generated Successfully!</h3>
+                        <button class="btn-close" onclick="closeResult()">×</button>
+                    </div>
+
+                    <div class="result-content">
+                        <!-- Summary Section -->
+                        <div class="result-section">
+                            <h4>📋 Summary</h4>
+                            <div id="summaryText" class="summary-text"></div>
+                            <div class="result-actions">
+                                <button class="btn btn-secondary" onclick="copySummary()" title="Copy summary">
+                                    📋 Copy
+                                </button>
+                                <button class="btn btn-secondary" onclick="downloadSummary()" title="Download as text">
+                                    ⬇️ Download
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Statistics Section -->
+                        <div class="result-section">
+                            <h4>📊 Statistics</h4>
+                            <div class="stats-table">
+                                <div class="stat-row">
+                                    <span class="stat-key">Transcript Words:</span>
+                                    <span class="stat-value" id="transcriptWords">-</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-key">Summary Words:</span>
+                                    <span class="stat-value" id="summaryWords">-</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-key">Compression Ratio:</span>
+                                    <span class="stat-value" id="compressionRatio">-</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-key">Characters Reduced:</span>
+                                    <span class="stat-value" id="charsReduced">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Transcript Section -->
+                        <div class="result-section">
+                            <h4>📝 Full Transcript</h4>
+                            <div id="transcriptText" class="transcript-text"></div>
+                            <button class="btn btn-secondary" onclick="copyTranscript()" title="Copy transcript">
+                                📋 Copy Transcript
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Features Section -->
+                <section class="features card">
+                    <h3>✨ Features</h3>
+                    <div class="features-grid">
+                        <div class="feature">
+                            <div class="feature-icon">🎬</div>
+                            <h4>YouTube Extraction</h4>
+                            <p>Automatically extract transcripts from any YouTube video with subtitles</p>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🤖</div>
+                            <h4>AI Summarization</h4>
+                            <p>Uses facebook/bart-large-cnn for high-quality abstractive summaries</p>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">💾</div>
+                            <h4>Cloud Storage</h4>
+                            <p>All summaries are saved automatically for future reference</p>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">📊</div>
+                            <h4>Analytics</h4>
+                            <p>Track compression ratio, word counts, and summarization metrics</p>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🌙</div>
+                            <h4>Dark Mode</h4>
+                            <p>Comfortable viewing experience with built-in dark mode support</p>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">⚡</div>
+                            <h4>Fast Processing</h4>
+                            <p>Get summaries in seconds using GPU-accelerated transformers</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- How It Works -->
+                <section class="how-it-works card">
+                    <h3>🔧 How It Works</h3>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <h4>Paste URL</h4>
+                            <p>Paste any YouTube video URL</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <h4>Extract</h4>
+                            <p>System extracts the video transcript</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <h4>Summarize</h4>
+                            <p>AI generates a concise summary</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <h4>Save</h4>
+                            <p>Summary is saved to your history</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <p>&copy; 2024 YouTube Video Summarizer | Powered by Flask, Transformers & PyTorch</p>
+                <p class="footer-tech">Built with ❤️ using Python, NLP, and AI</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const form = document.getElementById('summarizeForm');
+        const videoUrlInput = document.getElementById('videoUrl');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const resultContainer = document.getElementById('resultContainer');
+        const errorMessage = document.getElementById('errorMessage');
+        const themeToggle = document.getElementById('themeToggle');
+
+        let currentSummary = '';
+        let currentTranscript = '';
+
+        // Theme Toggle
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            updateThemeIcon();
+        });
+
+        // Load theme preference
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+        updateThemeIcon();
+
+        function updateThemeIcon() {
+            const icon = themeToggle.querySelector('.theme-icon');
+            icon.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+        }
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const url = videoUrlInput.value.trim();
+            if (!url) {
+                showError('Please enter a valid URL');
+                return;
+            }
+
+            // Clear previous messages
+            errorMessage.classList.add('hidden');
+            resultContainer.classList.add('hidden');
+            
+            // Show loading spinner
+            loadingSpinner.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/api/summarize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'An error occurred');
+                }
+
+                if (data.success) {
+                    displayResult(data.data);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showError(error.message);
+                console.error('Error:', error);
+            } finally {
+                loadingSpinner.classList.add('hidden');
+            }
+        });
+
+        function displayResult(data) {
+            currentSummary = data.summary;
+            currentTranscript = data.transcript;
+
+            document.getElementById('summaryText').textContent = data.summary;
+            document.getElementById('transcriptText').textContent = data.transcript;
+
+            // Update statistics
+            const stats = data.statistics;
+            document.getElementById('transcriptWords').textContent = stats.transcript.word_count.toLocaleString();
+            document.getElementById('summaryWords').textContent = stats.summary.word_count.toLocaleString();
+            document.getElementById('compressionRatio').textContent = stats.compression_ratio.toFixed(1) + '%';
+            
+            const charReduction = stats.transcript.character_count - stats.summary.character_count;
+            document.getElementById('charsReduced').textContent = charReduction.toLocaleString();
+
+            resultContainer.classList.remove('hidden');
+            resultContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showError(message) {
+            errorMessage.textContent = '❌ ' + message;
+            errorMessage.classList.remove('hidden');
+            errorMessage.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function copySummary() {
+            navigator.clipboard.writeText(currentSummary).then(() => {
+                alert('✅ Summary copied to clipboard!');
+            }).catch(err => {
+                alert('Failed to copy: ' + err);
+            });
+        }
+
+        function copyTranscript() {
+            navigator.clipboard.writeText(currentTranscript).then(() => {
+                alert('✅ Transcript copied to clipboard!');
+            }).catch(err => {
+                alert('Failed to copy: ' + err);
+            });
+        }
+
+        function downloadSummary() {
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(currentSummary));
+            element.setAttribute('download', 'summary.txt');
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+
+        function closeResult() {
+            resultContainer.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

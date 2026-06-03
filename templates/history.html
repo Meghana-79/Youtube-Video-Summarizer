@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summary History - YouTube Video Summarizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="wrapper">
+        <!-- Header -->
+        <header class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo-section">
+                        <h1 class="logo">📹 YouTube Summarizer</h1>
+                        <p class="tagline">AI-powered video summarization in seconds</p>
+                    </div>
+                    <div class="header-actions">
+                        <button id="themeToggle" class="theme-toggle" title="Toggle dark mode">
+                            <span class="theme-icon">🌙</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="container">
+                <ul class="nav-list">
+                    <li class="nav-item"><a href="/" class="nav-link">Home</a></li>
+                    <li class="nav-item"><a href="/history" class="nav-link active">History</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <h2 class="page-title">📚 Summarization History</h2>
+
+                <!-- Analytics Section -->
+                {% if analytics %}
+                <div class="analytics-card card">
+                    <h3>📊 Your Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ analytics.total_summaries }}</div>
+                            <div class="stat-label">Total Summaries</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ analytics.total_words_processed|int }}</div>
+                            <div class="stat-label">Words Processed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ analytics.average_compression_ratio }}%</div>
+                            <div class="stat-label">Avg Compression</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ analytics.total_summary_words|int }}</div>
+                            <div class="stat-label">Summary Words Generated</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- History Section -->
+                {% if summaries %}
+                <div class="history-controls card">
+                    <div class="controls-group">
+                        <input 
+                            type="text" 
+                            id="searchInput" 
+                            class="search-input" 
+                            placeholder="🔍 Search summaries..."
+                        >
+                        <button class="btn btn-secondary" onclick="sortSummaries()">
+                            Sort by Date
+                        </button>
+                    </div>
+                </div>
+
+                <div class="summaries-grid" id="summariesContainer">
+                    {% for summary in summaries %}
+                    <div class="summary-card card" data-id="{{ summary.id }}">
+                        <div class="summary-card-header">
+                            <h3 class="summary-title">{{ summary.url[:50] }}...</h3>
+                            <span class="summary-date">{{ summary.created_at[:10] }}</span>
+                        </div>
+
+                        <div class="summary-info">
+                            {% if summary.transcript_length %}
+                            <span class="badge">{{ summary.transcript_length }} words</span>
+                            {% endif %}
+                            {% if summary.compression_ratio %}
+                            <span class="badge badge-primary">{{ summary.compression_ratio }}% compression</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="summary-preview">
+                            <p>{{ summary.summary[:150] }}...</p>
+                        </div>
+
+                        <div class="summary-actions">
+                            <button 
+                                class="btn btn-small btn-view" 
+                                onclick="viewSummary({{ summary.id }})"
+                                title="View full summary"
+                            >
+                                👁️ View
+                            </button>
+                            <button 
+                                class="btn btn-small btn-download" 
+                                onclick="downloadSummary({{ summary.id }})"
+                                title="Download summary"
+                            >
+                                ⬇️ Download
+                            </button>
+                            <button 
+                                class="btn btn-small btn-delete" 
+                                onclick="deleteSummary({{ summary.id }})"
+                                title="Delete summary"
+                            >
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% else %}
+                <div class="empty-state card">
+                    <div class="empty-icon">📭</div>
+                    <h3>No summaries yet</h3>
+                    <p>You haven't created any summaries yet.</p>
+                    <a href="/" class="btn btn-primary">Create Your First Summary</a>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <p>&copy; 2024 YouTube Video Summarizer | Powered by Flask, Transformers & PyTorch</p>
+                <p class="footer-tech">Built with ❤️ using Python, NLP, and AI</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modal for Full Summary -->
+    <div id="summaryModal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeSummaryModal()">✕</button>
+            <h2 id="modalTitle">Summary</h2>
+            <div id="modalSummary" class="modal-text"></div>
+            <div class="modal-stats" id="modalStats"></div>
+            <button class="btn btn-secondary" onclick="copyFromModal()">Copy Summary</button>
+        </div>
+    </div>
+
+    <script>
+        const themeToggle = document.getElementById('themeToggle');
+        const searchInput = document.getElementById('searchInput');
+        let allSummaries = [];
+
+        // Theme Toggle
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            updateThemeIcon();
+        });
+
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+        updateThemeIcon();
+
+        function updateThemeIcon() {
+            const icon = themeToggle.querySelector('.theme-icon');
+            icon.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+        }
+
+        // Search functionality
+        searchInput.addEventListener('keyup', (e) => {
+            const query = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('.summary-card');
+            
+            cards.forEach(card => {
+                const title = card.querySelector('.summary-title').textContent.toLowerCase();
+                const preview = card.querySelector('.summary-preview').textContent.toLowerCase();
+                
+                if (title.includes(query) || preview.includes(query)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        async function viewSummary(summaryId) {
+            try {
+                const response = await fetch(`/api/summary/${summaryId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const summary = data.data;
+                    document.getElementById('modalTitle').textContent = 'Full Summary';
+                    document.getElementById('modalSummary').textContent = summary.summary;
+                    
+                    let statsHtml = '<div class="stats-table">';
+                    if (summary.transcript_length) {
+                        statsHtml += `<div class="stat-row"><span>Transcript Words:</span><span>${summary.transcript_length}</span></div>`;
+                    }
+                    if (summary.summary_length) {
+                        statsHtml += `<div class="stat-row"><span>Summary Words:</span><span>${summary.summary_length}</span></div>`;
+                    }
+                    if (summary.compression_ratio) {
+                        statsHtml += `<div class="stat-row"><span>Compression:</span><span>${summary.compression_ratio}%</span></div>`;
+                    }
+                    statsHtml += '</div>';
+                    document.getElementById('modalStats').innerHTML = statsHtml;
+
+                    document.getElementById('summaryModal').classList.remove('hidden');
+                    document.getElementById('summaryModal').dataset.content = summary.summary;
+                }
+            } catch (error) {
+                alert('Error loading summary: ' + error.message);
+            }
+        }
+
+        function closeSummaryModal() {
+            document.getElementById('summaryModal').classList.add('hidden');
+        }
+
+        function copyFromModal() {
+            const content = document.getElementById('summaryModal').dataset.content;
+            navigator.clipboard.writeText(content).then(() => {
+                alert('✅ Summary copied!');
+            });
+        }
+
+        async function deleteSummary(summaryId) {
+            if (!confirm('Are you sure you want to delete this summary?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/delete/${summaryId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.querySelector(`[data-id="${summaryId}"]`).remove();
+                    alert('✅ Summary deleted!');
+                    
+                    // Reload page if no summaries left
+                    if (document.querySelectorAll('.summary-card').length === 0) {
+                        location.reload();
+                    }
+                } else {
+                    alert('Error deleting summary');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function downloadSummary(summaryId) {
+            const card = document.querySelector(`[data-id="${summaryId}"]`);
+            const url = card.querySelector('.summary-title').textContent;
+            const preview = card.querySelector('.summary-preview').textContent;
+
+            const element = document.createElement('a');
+            element.setAttribute(
+                'href',
+                'data:text/plain;charset=utf-8,' + encodeURIComponent(preview)
+            );
+            element.setAttribute('download', `summary_${summaryId}.txt`);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+
+        function sortSummaries() {
+            const container = document.getElementById('summariesContainer');
+            const cards = Array.from(document.querySelectorAll('.summary-card'));
+            
+            cards.reverse();
+            cards.forEach(card => container.appendChild(card));
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('summaryModal').addEventListener('click', (e) => {
+            if (e.target.id === 'summaryModal') {
+                closeSummaryModal();
+            }
+        });
+    </script>
+</body>
+</html>

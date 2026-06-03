@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summary Result - YouTube Video Summarizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>YouTube Video Summarizer</h1>
+            <p>AI-powered video summarization</p>
+        </header>
+
+        <nav>
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/history">History</a></li>
+            </ul>
+        </nav>
+
+        <main>
+            <div class="result-page">
+                <div class="result-card">
+                    <h2>Video Summary</h2>
+                    <div id="summaryContent" class="summary-content">
+                        <p>Loading summary...</p>
+                    </div>
+                    <div class="result-actions">
+                        <button id="copyBtn" class="btn btn-secondary">Copy to Clipboard</button>
+                        <button id="downloadBtn" class="btn btn-secondary">Download</button>
+                        <a href="/" class="btn btn-primary">Back to Home</a>
+                    </div>
+                </div>
+
+                <div class="transcript-section">
+                    <h3>Full Transcript</h3>
+                    <div id="transcriptContent" class="transcript-content">
+                        <p>Loading transcript...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const summaryContent = document.getElementById('summaryContent');
+        const transcriptContent = document.getElementById('transcriptContent');
+
+        // These would be populated from the previous summarization
+        // For now, they show placeholder content
+
+        copyBtn.addEventListener('click', () => {
+            const text = summaryContent.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Summary copied to clipboard!');
+            });
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const text = summaryContent.innerText;
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', 'summary.txt');
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        });
+    </script>
+</body>
+</html>
